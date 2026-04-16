@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solar Value Calculator</title>
+  <style>
+    :root {
+      --primary: #1a73e8;
+      --success: #34a853;
+      --warning: #f59e0b;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --shadow: 0 1px 3px rgba(0,0,0,0.10), 0 1px 2px rgba(0,0,0,0.06);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1e40af 0%, #1a73e8 60%, #0ea5e9 100%);
+      color: white;
+      padding: 40px 24px 36px;
+      text-align: center;
+    }
+    header .logo { font-size: 52px; display: block; margin-bottom: 14px; }
+    header h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; }
+    header p { font-size: 15px; opacity: 0.85; max-width: 480px; margin: 0 auto; }
+
+    /* ── Layout ── */
+    .container { max-width: 1040px; margin: 0 auto; padding: 28px 16px 48px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } header h1 { font-size: 22px; } }
+    .full-width { margin-top: 20px; }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 26px 24px;
+      box-shadow: var(--shadow);
+    }
+    .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 22px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    /* ── Form ── */
+    .form-group { margin-bottom: 18px; }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    label .hint { font-weight: 400; color: var(--muted); }
+    input[type="number"], select {
+      width: 100%;
+      padding: 10px 13px;
+      border: 1.5px solid var(--border);
+      border-radius: 9px;
+      font-size: 15px;
+      color: var(--text);
+      background: white;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      -webkit-appearance: none;
+    }
+    input[type="number"]:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(26,115,232,0.14);
+    }
+
+    /* ── Radio toggle ── */
+    .radio-group { display: flex; gap: 8px; }
+    .radio-btn { flex: 1; }
+    .radio-btn input { display: none; }
+    .radio-btn label {
+      display: block;
+      text-align: center;
+      padding: 9px 8px;
+      border: 1.5px solid var(--border);
+      border-radius: 9px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.15s;
+      margin: 0;
+      white-space: nowrap;
+    }
+    .radio-btn input:checked + label {
+      border-color: var(--primary);
+      background: #eff6ff;
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    /* ── Results ── */
+    .empty-state {
+      text-align: center;
+      color: var(--muted);
+      padding: 36px 0 24px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .empty-state .icon { font-size: 36px; display: block; margin-bottom: 10px; }
+
+    .highlight-box {
+      background: linear-gradient(135deg, #eff6ff, #f0fdf4);
+      border: 1.5px solid #bfdbfe;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .highlight-box .hl-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .highlight-box .hl-value {
+      font-size: 38px;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: -1px;
+    }
+    .highlight-box .hl-sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 5px;
+    }
+
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 11px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .metric:last-of-type { border-bottom: none; }
+    .metric-label { font-size: 13px; color: var(--muted); }
+    .metric-value { font-size: 17px; font-weight: 700; }
+    .metric-value.green { color: var(--success); }
+    .metric-value.blue { color: var(--primary); }
+
+    /* ── Lease warning ── */
+    .lease-warn {
+      display: none;
+      margin-top: 16px;
+      background: #fffbeb;
+      border: 1.5px solid #fde68a;
+      border-radius: 9px;
+      padding: 13px 15px;
+      font-size: 13px;
+      color: #92400e;
+      line-height: 1.55;
+    }
+
+    /* ── Incentives ── */
+    .incentive-item {
+      display: flex;
+      gap: 14px;
+      padding: 15px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .incentive-item:last-child { border-bottom: none; }
+    .inc-icon {
+      width: 38px; height: 38px;
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 19px; flex-shrink: 0;
+    }
+    .inc-icon.federal { background: #eff6ff; }
+    .inc-icon.state   { background: #f0fdf4; }
+    .inc-icon.local   { background: #fffbeb; }
+    .inc-body .inc-title {
+      font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px;
+    }
+    .inc-body .inc-desc { font-size: 12px; color: var(--muted); line-height: 1.55; }
+    .badge {
+      display: inline-block;
+      padding: 1px 7px; border-radius: 100px;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+      vertical-align: middle; margin-left: 5px;
+    }
+    .badge.federal { background: #dbeafe; color: #1d4ed8; }
+    .badge.state   { background: #dcfce7; color: #15803d; }
+    .badge.local   { background: #fef3c7; color: #b45309; }
+
+    /* ── Assumptions toggle ── */
+    .assumptions-toggle {
+      margin-top: 20px;
+      font-size: 12px;
+      color: var(--muted);
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      display: inline-block;
+    }
+    .assumptions-box {
+      display: none;
+      margin-top: 12px;
+      background: #f8fafc;
+      border-radius: 9px;
+      padding: 14px 16px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    .assumptions-box.open { display: block; }
+
+    /* ── Disclaimer ── */
+    .disclaimer {
+      margin-top: 20px;
+      background: white;
+      border-radius: 10px;
+      padding: 14px 18px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.6;
+      border-left: 3px solid var(--border);
+    }
+
+    footer { text-align: center; padding: 20px; font-size: 12px; color: var(--muted); }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">☀️</span>
+  <h1>Solar Value Calculator</h1>
+  <p>Estimate the market value a solar installation adds to a home — for real estate professionals</p>
+</header>
+
+<div class="container">
+  <div class="grid">
+
+    <!-- ── INPUTS ── -->
+    <div class="card">
+      <div class="card-title">⚙️ System Details</div>
+
+      <div class="form-group">
+        <label for="state">State</label>
+        <select id="state">
+          <option value="">Select a state…</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="system_size">System Size <span class="hint">(kilowatts, kW)</span></label>
+        <input type="number" id="system_size" placeholder="e.g. 8" min="0.5" max="200" step="0.5">
+      </div>
+
+      <div class="form-group">
+        <label for="system_age">System Age <span class="hint">(years since installation)</span></label>
+        <input type="number" id="system_age" placeholder="e.g. 3" min="0" max="30" step="1" value="0">
+      </div>
+
+      <div class="form-group">
+        <label>Ownership Type</label>
+        <div class="radio-group">
+          <div class="radio-btn">
+            <input type="radio" name="ownership" id="own_owned" value="owned" checked>
+            <label for="own_owned">Owned</label>
+          </div>
+          <div class="radio-btn">
+            <input type="radio" name="ownership" id="own_leased" value="leased">
+            <label for="own_leased">Leased</label>
+          </div>
+          <div class="radio-btn">
+            <input type="radio" name="ownership" id="own_ppa" value="ppa">
+            <label for="own_ppa">PPA</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="monthly_bill">Current Monthly Electric Bill <span class="hint">(optional, $)</span></label>
+        <input type="number" id="monthly_bill" placeholder="e.g. 150" min="0" step="1">
+      </div>
+
+      <span class="assumptions-toggle" onclick="toggleAssumptions()">View calculation assumptions ▾</span>
+      <div class="assumptions-box" id="assumptions-box">
+        <strong>Model assumptions:</strong><br>
+        • 25-year system lifespan &nbsp;|&nbsp; 0.5% annual panel degradation<br>
+        • 3% annual electricity rate escalation<br>
+        • 7% discount rate (NPV)<br>
+        • 80% performance ratio (inverter/wiring losses)<br>
+        • State avg. sun hours &amp; electricity rates from EIA/NREL data (2024)<br>
+        • Home value add = NPV of remaining projected savings<br>
+        • Payback uses ~$3.00/W installed cost; ITC applied for systems &lt; 1 yr old
+      </div>
+    </div>
+
+    <!-- ── RESULTS ── -->
+    <div class="card">
+      <div class="card-title">💡 Estimated Value</div>
+
+      <div id="results-empty" class="empty-state">
+        <span class="icon">🏡</span>
+        Enter state &amp; system size<br>to see estimated value
+      </div>
+
+      <div id="results-content" style="display:none">
+        <div class="highlight-box">
+          <div class="hl-label">Estimated Home Value Added</div>
+          <div class="hl-value" id="res-home-value">—</div>
+          <div class="hl-sub">NPV of projected electricity savings over remaining system life</div>
+        </div>
+
+        <div class="metric">
+          <span class="metric-label">Annual Electricity Savings</span>
+          <span class="metric-value green" id="res-annual-savings">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">25-Year Gross Savings (undiscounted)</span>
+          <span class="metric-value" id="res-25yr">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Est. Payback Period</span>
+          <span class="metric-value blue" id="res-payback">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Remaining System Life</span>
+          <span class="metric-value" id="res-remaining-life">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Est. Annual Production</span>
+          <span class="metric-value" id="res-production">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">State Avg. Electricity Rate</span>
+          <span class="metric-value" id="res-rate">—</span>
+        </div>
+
+        <div class="lease-warn" id="lease-warning">
+          ⚠️ <strong>Leased &amp; PPA systems</strong> typically do not add comparable market value — the buyer must qualify to assume the contract. Depending on terms, remaining payment obligations can be a liability. Consult a solar-experienced appraiser and review the contract's transfer clause before pricing.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── INCENTIVES ── -->
+  <div class="card full-width">
+    <div class="card-title">🏛️ Available Incentives</div>
+    <div id="incentives-empty" class="empty-state" style="padding:20px 0 10px">
+      <span class="icon" style="font-size:28px">📋</span>
+      Select a state to see federal &amp; state incentives
+    </div>
+    <div id="incentives-list" style="display:none"></div>
+  </div>
+
+  <div class="disclaimer">
+    <strong>Disclaimer:</strong> This tool provides estimates for informational purposes only. Actual savings and home value impact depend on local rates, net metering policy, system condition, buyer financing, and market conditions. For formal appraisals, seek a USPAP-trained appraiser with PV Value® certification. Incentive programs change frequently — always verify current availability with the relevant agency or utility.
+  </div>
+</div>
+
+<footer>Solar Value Calculator &mdash; Built for real estate professionals</footer>
+
+<script>
+// ─────────────────────────────────────────────
+// STATE DATA  (EIA 2024 avg rates, NREL sun hrs)
+// ─────────────────────────────────────────────
+const STATE_DATA = {
+  AL:{name:"Alabama",          rate:0.129, sun:4.7},
+  AK:{name:"Alaska",           rate:0.224, sun:3.0},
+  AZ:{name:"Arizona",          rate:0.128, sun:6.5},
+  AR:{name:"Arkansas",         rate:0.107, sun:4.7},
+  CA:{name:"California",       rate:0.263, sun:5.5},
+  CO:{name:"Colorado",         rate:0.133, sun:5.5},
+  CT:{name:"Connecticut",      rate:0.255, sun:4.2},
+  DE:{name:"Delaware",         rate:0.133, sun:4.3},
+  FL:{name:"Florida",          rate:0.129, sun:5.3},
+  GA:{name:"Georgia",          rate:0.125, sun:4.9},
+  HI:{name:"Hawaii",           rate:0.387, sun:5.7},
+  ID:{name:"Idaho",            rate:0.103, sun:4.9},
+  IL:{name:"Illinois",         rate:0.131, sun:4.0},
+  IN:{name:"Indiana",          rate:0.135, sun:4.2},
+  IA:{name:"Iowa",             rate:0.108, sun:4.4},
+  KS:{name:"Kansas",           rate:0.118, sun:5.0},
+  KY:{name:"Kentucky",         rate:0.111, sun:4.3},
+  LA:{name:"Louisiana",        rate:0.108, sun:5.0},
+  ME:{name:"Maine",            rate:0.211, sun:4.2},
+  MD:{name:"Maryland",         rate:0.147, sun:4.5},
+  MA:{name:"Massachusetts",    rate:0.255, sun:4.3},
+  MI:{name:"Michigan",         rate:0.179, sun:4.0},
+  MN:{name:"Minnesota",        rate:0.138, sun:4.5},
+  MS:{name:"Mississippi",      rate:0.115, sun:5.0},
+  MO:{name:"Missouri",         rate:0.116, sun:4.7},
+  MT:{name:"Montana",          rate:0.118, sun:4.5},
+  NE:{name:"Nebraska",         rate:0.107, sun:4.8},
+  NV:{name:"Nevada",           rate:0.115, sun:6.4},
+  NH:{name:"New Hampshire",    rate:0.231, sun:4.2},
+  NJ:{name:"New Jersey",       rate:0.179, sun:4.4},
+  NM:{name:"New Mexico",       rate:0.137, sun:6.8},
+  NY:{name:"New York",         rate:0.212, sun:4.0},
+  NC:{name:"North Carolina",   rate:0.119, sun:4.8},
+  ND:{name:"North Dakota",     rate:0.097, sun:4.8},
+  OH:{name:"Ohio",             rate:0.138, sun:4.0},
+  OK:{name:"Oklahoma",         rate:0.105, sun:5.4},
+  OR:{name:"Oregon",           rate:0.118, sun:4.2},
+  PA:{name:"Pennsylvania",     rate:0.154, sun:4.2},
+  RI:{name:"Rhode Island",     rate:0.266, sun:4.3},
+  SC:{name:"South Carolina",   rate:0.135, sun:5.0},
+  SD:{name:"South Dakota",     rate:0.112, sun:4.9},
+  TN:{name:"Tennessee",        rate:0.118, sun:4.7},
+  TX:{name:"Texas",            rate:0.128, sun:5.3},
+  UT:{name:"Utah",             rate:0.104, sun:5.9},
+  VT:{name:"Vermont",          rate:0.198, sun:4.1},
+  VA:{name:"Virginia",         rate:0.127, sun:4.5},
+  WA:{name:"Washington",       rate:0.106, sun:3.8},
+  WV:{name:"West Virginia",    rate:0.116, sun:4.1},
+  WI:{name:"Wisconsin",        rate:0.155, sun:4.2},
+  WY:{name:"Wyoming",          rate:0.109, sun:5.3},
+  DC:{name:"Washington D.C.",  rate:0.162, sun:4.3},
+};
+
+// ─────────────────────────────────────────────
+// INCENTIVES
+// ─────────────────────────────────────────────
+const FEDERAL = [
+  {type:"federal", icon:"🇺🇸",
+   title:"Federal Residential Clean Energy Credit (ITC) — 30%",
+   desc:"Homeowners who install a new solar system can claim 30% of total installed cost as a federal income tax credit. Applies through 2032, then steps down to 26% (2033) and 22% (2034). Only claimable by the original purchaser in the tax year of installation — credit does not transfer with the home."}
+];
+
+const STATE_INC = {
+  AL:[],
+  AK:[],
+  AZ:[
+    {type:"state",icon:"💰",title:"AZ State Tax Credit — 25% (up to $1,000)",desc:"Arizona homeowners can claim 25% of solar installation cost as a state income tax credit, capped at $1,000 per installation."},
+    {type:"state",icon:"🏠",title:"Property Tax Exemption",desc:"The added assessed value from a solar system is fully exempt from Arizona property taxes for the life of the system."},
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"Arizona utilities must offer net metering. Excess solar energy offsets future utility bills at retail rate."},
+  ],
+  AR:[],
+  CA:[
+    {type:"state",icon:"🔁",title:"Net Energy Metering (NEM 3.0)",desc:"California's current NEM 3.0 program credits solar exports at a lower avoided-cost rate (~$0.05/kWh). Customers who enrolled under NEM 2.0 are grandfathered for 20 years at more favorable rates. Materially affects payback for new installations compared to older systems."},
+    {type:"state",icon:"🔋",title:"Self-Generation Incentive Program (SGIP)",desc:"Rebates for battery storage paired with solar, ranging from $150–$1,000/kWh depending on income and project type. Equity customers receive higher rebates."},
+    {type:"state",icon:"🏠",title:"Property Tax Exclusion",desc:"Active solar energy systems are excluded from property reassessment under California law. The added value does not increase property taxes."},
+  ],
+  CO:[
+    {type:"state",icon:"🏠",title:"Property Tax Exemption",desc:"Colorado exempts the added residential property value attributable to a solar system from property tax assessment."},
+    {type:"local",icon:"⚡",title:"Xcel Energy / Black Hills Rebates",desc:"Utility rebates vary; Xcel Energy has historically offered per-kW rebates. Check current program availability with the local utility before advising clients."},
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"Colorado investor-owned utilities (IOUs) are required to offer net metering."},
+  ],
+  CT:[
+    {type:"state",icon:"💰",title:"Residential Solar Investment Program (RSIP)",desc:"Connecticut Green Bank offers performance-based incentives. Incentive blocks fill up — check current availability at ctcleanenergy.com."},
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"Net metering available through Eversource and United Illuminating (UI)."},
+  ],
+  DE:[
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"Delaware utilities offer net metering at retail rate for residential systems up to 25 kW."},
+    {type:"state",icon:"📜",title:"Solar Renewable Energy Credits (SRECs)",desc:"Delaware maintains an SREC market. Solar owners earn one SREC per MWh generated, which can be sold to utilities to meet RPS requirements."},
+  ],
+  FL:[
+    {type:"state",icon:"🏠",title:"Property Tax Exemption",desc:"Florida law exempts 100% of the value a solar system adds to a home from property taxes for the life of the system — a significant selling point for buyers."},
+    {type:"state",icon:"🛒",title:"Sales Tax Exemption",desc:"Solar energy equipment is exempt from Florida's 6% sales and use tax."},
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"Florida utilities offer net metering, though the program faces ongoing legislative review. Verify current terms with the serving utility."},
+  ],
+  GA:[
+    {type:"state",icon:"🔁",title:"Net Metering (Georgia Power)",desc:"Georgia Power's Advanced Solar Initiative offers net metering-style credits for qualifying residential customers."},
+  ],
+  HI:[
+    {type:"state",icon:"💰",title:"Hawaii State Tax Credit — 35% (up to $5,000)",desc:"Hawaii offers a 35% state income tax credit on solar installations, capped at $5,000 for single-family homes."},
+    {type:"state",icon:"🔁",title:"Smart Export / Grid-Supply Program",desc:"Hawaii has moved beyond traditional net metering to time-of-use export programs. Export credit rates vary; review current HECO tariffs."},
+  ],
+  ID:[
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"Idaho utilities offer net metering for systems up to 100 kW."},
+    {type:"state",icon:"💸",title:"Idaho Energy Tax Deduction",desc:"Idaho allows a 40% deduction on solar costs in year 1, plus 20% in each of the following 3 years, against state income taxes."},
+  ],
+  IL:[
+    {type:"state",icon:"📜",title:"Illinois Shines (Adjustable Block Program)",desc:"Illinois offers upfront SREC payments through the Adjustable Block Program. Credits are purchased at a set price over 15 years — one of the most generous incentives in the Midwest."},
+    {type:"state",icon:"🏠",title:"Property Tax Exemption",desc:"Illinois exempts the added value of solar installations from property tax assessment."},
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"Net metering available through Ameren Illinois and ComEd."},
+  ],
+  IN:[
+    {type:"state",icon:"🔁",title:"Net Metering (Reduced Export Rate)",desc:"Indiana phased out 1:1 net metering; export credits are now paid at a reduced avoided-cost rate. Confirm current terms with the serving utility, as this significantly affects ROI for new systems."},
+  ],
+  IA:[
+    {type:"state",icon:"💰",title:"Iowa State Tax Credit — 15% (up to $5,000)",desc:"Iowa offers a 15% state income tax credit on residential solar installations, capped at $5,000."},
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"Iowa utilities are required to offer net metering."},
+  ],
+  KS:[],
+  KY:[],
+  LA:[],
+  ME:[
+    {type:"state",icon:"🔁",title:"Net Energy Billing",desc:"Maine uses a net energy billing system functionally similar to net metering."},
+    {type:"state",icon:"💰",title:"Efficiency Maine Solar Rebate",desc:"Efficiency Maine administers solar rebate programs; check current program status at efficiencymaine.com."},
+  ],
+  MD:[
+    {type:"state",icon:"💰",title:"MD State Tax Credit — 30% (up to $5,000)",desc:"Maryland homeowners can claim a 30% state income tax credit on solar installations, capped at $5,000."},
+    {type:"state",icon:"📜",title:"Solar Renewable Energy Credits (SRECs)",desc:"Maryland has an active SREC market. Homeowners earn one SREC per MWh, which can be sold to utilities meeting the state RPS."},
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"Net metering available at retail rates for systems up to 2 MW."},
+  ],
+  MA:[
+    {type:"state",icon:"💰",title:"MA State Tax Credit — 15% (up to $1,000)",desc:"Massachusetts offers a 15% state income tax credit on solar costs, capped at $1,000."},
+    {type:"state",icon:"📜",title:"SMART Program (Solar Massachusetts Renewable Target)",desc:"Performance-based incentive paying a fixed per-kWh rate for 10 years. One of the most valuable ongoing incentives in New England — rates vary by utility and block. Check current block pricing at masssolar.com."},
+    {type:"state",icon:"🏠",title:"Property Tax Exemption",desc:"Massachusetts exempts the full assessed value of a solar installation from property taxes for 20 years."},
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"Net metering available through Eversource, National Grid, and Unitil."},
+  ],
+  MI:[
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"DTE Energy and Consumers Energy offer net metering programs; export credits applied at retail rate."},
+  ],
+  MN:[
+    {type:"state",icon:"📜",title:"Solar Rewards (Xcel Energy)",desc:"Xcel Energy's Solar Rewards program pays a production incentive per kWh. Check current availability and rates."},
+    {type:"state",icon:"🏠",title:"Property Tax Exemption",desc:"Minnesota exempts solar systems from property tax assessments."},
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"Minnesota utilities are required to offer net metering."},
+  ],
+  MS:[],
+  MO:[],
+  MT:[
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"Montana utilities required to offer net metering for systems up to 50 kW."},
+  ],
+  NE:[],
+  NV:[
+    {type:"state",icon:"🔁",title:"Net Metering (NV Energy)",desc:"Nevada restored retail-rate net metering. Verify current NV Energy tariff for new customers, as terms have changed historically."},
+    {type:"state",icon:"🏠",title:"Property Tax Exemption",desc:"Nevada exempts 100% of the value solar adds to a home from property taxes."},
+    {type:"state",icon:"🛒",title:"Sales Tax Exemption",desc:"Solar equipment is exempt from Nevada sales tax."},
+  ],
+  NH:[
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"New Hampshire utilities offer net metering."},
+    {type:"state",icon:"🏠",title:"Property Tax Exemption",desc:"New Hampshire allows municipalities to exempt solar installations from local property taxes. Verify with the specific town."},
+  ],
+  NJ:[
+    {type:"state",icon:"📜",title:"Transition Renewable Energy Certificates (TRECs)",desc:"New Jersey's TREC program (replacement for SRECs) pays new solar installations a set per-TREC rate for 15 years. One TREC is earned per MWh."},
+    {type:"state",icon:"🏠",title:"Property Tax Exemption",desc:"New Jersey fully exempts solar installations from property tax assessment."},
+    {type:"state",icon:"🛒",title:"Sales Tax Exemption",desc:"Solar equipment purchases are fully exempt from NJ sales tax."},
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"Net metering available through JCP&L, PSE&G, Atlantic City Electric, and others."},
+  ],
+  NM:[
+    {type:"state",icon:"💰",title:"NM Solar Market Development Tax Credit — 10% (up to $6,000)",desc:"New Mexico offers a 10% state tax credit on solar installations capped at $6,000, with an 8-year carryforward."},
+    {type:"state",icon:"🏠",title:"Property Tax Exemption",desc:"Added value from a solar system is exempt from New Mexico property taxes."},
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"PNM and other New Mexico utilities offer net metering at retail rates."},
+  ],
+  NY:[
+    {type:"state",icon:"💰",title:"NY State Tax Credit — 25% (up to $5,000)",desc:"New York offers a 25% state income tax credit on solar costs, capped at $5,000, with a 5-year carryforward."},
+    {type:"state",icon:"💸",title:"NY-Sun Megawatt Block Incentive (NYSERDA)",desc:"NYSERDA's NY-Sun program offers upfront per-watt rebates that vary by region (Con Edison territory vs. Upstate). Check current block pricing at nyserda.ny.gov."},
+    {type:"local",icon:"🏙️",title:"NYC Property Tax Abatement",desc:"New York City offers a 20% property tax abatement for solar installations, credited over 4 years."},
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"Net metering available through Con Edison, NYSEG, Central Hudson, National Grid, and others."},
+  ],
+  NC:[
+    {type:"state",icon:"🔁",title:"Net Metering (Duke Energy NC / Dominion)",desc:"North Carolina utilities offer net metering; Duke Energy NC credits excess solar at retail rate."},
+    {type:"state",icon:"🏠",title:"Property Tax Exclusion",desc:"North Carolina excludes 80% of the appraised value of a solar installation from property tax for up to 5 years."},
+  ],
+  ND:[],
+  OH:[
+    {type:"state",icon:"📜",title:"Ohio SREC Market (AEPS)",desc:"Ohio has an active SREC market driven by its Alternative Energy Portfolio Standards. Solar owners earn one SREC per MWh to sell to utilities."},
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"Ohio utilities required to offer net metering for systems up to 120% of annual usage."},
+  ],
+  OK:[],
+  OR:[
+    {type:"state",icon:"💰",title:"Oregon Solar + Storage Rebate — up to $5,000",desc:"Oregon ODOE offers rebates up to $5,000 for solar plus additional incentives for pairing with battery storage. Verify current funding availability."},
+    {type:"state",icon:"🏠",title:"Property Tax Exemption",desc:"Oregon exempts residential solar installations from property tax for 8 years."},
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"Oregon utilities required to offer net metering at retail rates."},
+  ],
+  PA:[
+    {type:"state",icon:"📜",title:"Pennsylvania SREC Market (AEPS)",desc:"Pennsylvania has an active SREC market under its Alternative Energy Portfolio Standards. Solar owners can sell SRECs to utilities."},
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"Net metering available through PECO, PPL, West Penn Power, and other PA utilities."},
+  ],
+  RI:[
+    {type:"state",icon:"📜",title:"Renewable Energy Growth (REG) Program",desc:"Rhode Island's REG program offers long-term (15–20 year) fixed-price contracts for solar production through National Grid. Check current pricing tranches."},
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"Net metering available through National Grid RI."},
+  ],
+  SC:[
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"South Carolina utilities offer net metering at retail rates."},
+  ],
+  SD:[],
+  TN:[],
+  TX:[
+    {type:"state",icon:"🏠",title:"Property Tax Exemption (School Districts)",desc:"Texas law exempts 100% of the added appraised value from solar from school district property taxes — a meaningful benefit given Texas property tax levels."},
+    {type:"local",icon:"⚡",title:"Austin Energy / CPS Energy Rebates",desc:"Austin Energy has offered $2,500 rebates for solar; CPS Energy has offered similar programs. Rebate availability changes frequently — check directly with the local utility."},
+    {type:"state",icon:"🔁",title:"Net Metering (varies by utility)",desc:"Texas net metering policies vary significantly by utility. ERCOT-area utilities offer buyback programs at varying rates — confirm terms with the serving utility."},
+  ],
+  UT:[
+    {type:"state",icon:"💰",title:"Utah Renewable Energy Systems Tax Credit — 25% (up to $2,000)",desc:"Utah offers a 25% state tax credit on solar installations capped at $2,000, with a 4-year carryforward."},
+    {type:"state",icon:"🔁",title:"Net Metering (Rocky Mountain Power)",desc:"Rocky Mountain Power offers net metering under its current NEM tariff."},
+  ],
+  VT:[
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"Vermont utilities offer net metering at retail rates. Green Mountain Power is a national leader in renewable energy programs."},
+    {type:"state",icon:"💸",title:"VEDA Low-Interest Loans",desc:"Vermont Economic Development Authority offers low-interest financing for renewable energy installations."},
+  ],
+  VA:[
+    {type:"state",icon:"🏠",title:"Property Tax Exemption",desc:"Virginia localities may offer property tax exemptions for solar installations; availability varies by jurisdiction."},
+    {type:"state",icon:"🔁",title:"Net Metering (Dominion / Appalachian Power)",desc:"Virginia utilities offer net metering for residential systems up to 20 kW."},
+  ],
+  WA:[
+    {type:"state",icon:"🛒",title:"Sales Tax Exemption",desc:"Washington state exempts solar energy systems from sales and use tax."},
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"Washington utilities required to offer net metering at retail rates."},
+  ],
+  WV:[],
+  WI:[
+    {type:"state",icon:"🏠",title:"Property Tax Exemption",desc:"Wisconsin exempts solar energy systems from property tax assessment."},
+    {type:"state",icon:"🔁",title:"Net Metering",desc:"Wisconsin utilities offer net metering."},
+  ],
+  WY:[],
+  DC:[
+    {type:"state",icon:"📜",title:"DC SREC Market",desc:"Washington D.C. has historically had one of the most lucrative SREC markets in the country, driven by an aggressive RPS requirement. DC SRECs typically trade at a significant premium. Check SRECTrade.com for current market prices."},
+    {type:"state",icon:"🔁",title:"Net Metering (Pepco)",desc:"Pepco offers net metering to DC customers at retail rates."},
+    {type:"state",icon:"🏠",title:"Property Tax Exemption",desc:"DC exempts the added value of solar from real property taxes."},
+  ],
+};
+
+// ─────────────────────────────────────────────
+// CALCULATION CONSTANTS
+// ─────────────────────────────────────────────
+const SYSTEM_LIFE    = 25;
+const DEGRADATION    = 0.005;
+const RATE_ESC       = 0.03;
+const DISCOUNT_RATE  = 0.07;
+const COST_PER_WATT  = 3.00;
+const PERF_RATIO     = 0.80;
+
+function annualProduction(kw, sun, age) {
+  return kw * sun * 365 * PERF_RATIO * Math.pow(1 - DEGRADATION, age);
+}
+
+function calcNPV(kw, sun, rate, age) {
+  const remaining = Math.max(0, SYSTEM_LIFE - age);
+  let npv = 0;
+  const baseProd = annualProduction(kw, sun, age);
+  for (let yr = 1; yr <= remaining; yr++) {
+    const prod  = baseProd * Math.pow(1 - DEGRADATION, yr - 1);
+    const r     = rate * Math.pow(1 + RATE_ESC, age + yr - 1);
+    npv += (prod * r) / Math.pow(1 + DISCOUNT_RATE, yr);
+  }
+  return npv;
+}
+
+function calc25yrGross(kw, sun, rate) {
+  let total = 0;
+  const base = annualProduction(kw, sun, 0);
+  for (let yr = 0; yr < SYSTEM_LIFE; yr++) {
+    const prod = base * Math.pow(1 - DEGRADATION, yr);
+    const r    = rate * Math.pow(1 + RATE_ESC, yr);
+    total += prod * r;
+  }
+  return total;
+}
+
+function fmt(v) {
+  if (v >= 1e6) return '$' + (v / 1e6).toFixed(2) + 'M';
+  return '$' + Math.round(v).toLocaleString();
+}
+
+// ─────────────────────────────────────────────
+// BUILD STATE DROPDOWN
+// ─────────────────────────────────────────────
+const sel = document.getElementById('state');
+Object.entries(STATE_DATA)
+  .sort(([,a],[,b]) => a.name.localeCompare(b.name))
+  .forEach(([code, d]) => {
+    const o = document.createElement('option');
+    o.value = code; o.textContent = d.name;
+    sel.appendChild(o);
+  });
+
+// ─────────────────────────────────────────────
+// MAIN CALCULATE
+// ─────────────────────────────────────────────
+function calculate() {
+  const stateCode = document.getElementById('state').value;
+  const kw        = parseFloat(document.getElementById('system_size').value);
+  const age       = parseFloat(document.getElementById('system_age').value) || 0;
+  const ownership = document.querySelector('input[name="ownership"]:checked').value;
+
+  const resEmpty   = document.getElementById('results-empty');
+  const resContent = document.getElementById('results-content');
+
+  if (!stateCode || !kw || kw <= 0) {
+    resEmpty.style.display = '';
+    resContent.style.display = 'none';
+    updateIncentives(stateCode);
+    return;
+  }
+
+  const d = STATE_DATA[stateCode];
+  const rate = d.rate;
+
+  const prod      = annualProduction(kw, d.sun, age);
+  const annSav    = prod * rate;
+  const remaining = Math.max(0, SYSTEM_LIFE - age);
+  const npv       = calcNPV(kw, d.sun, rate, age);
+  const gross25   = calc25yrGross(kw, d.sun, rate);
+  const sysCost   = kw * 1000 * COST_PER_WATT;
+  const effCost   = age < 1 ? sysCost * 0.70 : sysCost;
+  const payback   = annSav > 0 ? effCost / annSav : null;
+
+  resEmpty.style.display = 'none';
+  resContent.style.display = '';
+
+  document.getElementById('res-home-value').textContent   = fmt(npv);
+  document.getElementById('res-annual-savings').textContent = fmt(annSav) + '/yr';
+  document.getElementById('res-25yr').textContent          = fmt(gross25);
+  document.getElementById('res-remaining-life').textContent = remaining + ' years';
+  document.getElementById('res-production').textContent    = Math.round(prod).toLocaleString() + ' kWh/yr';
+  document.getElementById('res-rate').textContent          = (rate * 100).toFixed(1) + '¢/kWh';
+
+  if (payback && payback > 0) {
+    const remaining_pb = Math.max(0, payback - age);
+    document.getElementById('res-payback').textContent =
+      age < 1
+        ? payback.toFixed(1) + ' yrs (after 30% ITC)'
+        : remaining_pb < 0.5
+          ? 'Likely paid back'
+          : remaining_pb.toFixed(1) + ' yrs remaining';
+  } else {
+    document.getElementById('res-payback').textContent = '—';
+  }
+
+  document.getElementById('lease-warning').style.display =
+    (ownership === 'leased' || ownership === 'ppa') ? 'block' : 'none';
+
+  updateIncentives(stateCode);
+}
+
+function updateIncentives(stateCode) {
+  const empty = document.getElementById('incentives-empty');
+  const list  = document.getElementById('incentives-list');
+
+  if (!stateCode) {
+    empty.style.display = '';
+    list.style.display = 'none';
+    return;
+  }
+
+  const items = [...FEDERAL, ...(STATE_INC[stateCode] || [])];
+  empty.style.display = 'none';
+  list.style.display = '';
+
+  if (items.length === 0) {
+    list.innerHTML = '<p style="font-size:13px;color:#64748b;padding:12px 0">No major state incentive programs identified beyond the federal ITC. Check with local utilities for any available rebates.</p>';
+    return;
+  }
+
+  list.innerHTML = items.map(i => `
+    <div class="incentive-item">
+      <div class="inc-icon ${i.type}">${i.icon}</div>
+      <div class="inc-body">
+        <div class="inc-title">${i.title}<span class="badge ${i.type}">${i.type.toUpperCase()}</span></div>
+        <div class="inc-desc">${i.desc}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleAssumptions() {
+  const box = document.getElementById('assumptions-box');
+  const tog = document.querySelector('.assumptions-toggle');
+  const open = box.classList.toggle('open');
+  tog.textContent = open ? 'Hide calculation assumptions ▴' : 'View calculation assumptions ▾';
+}
+
+// Wire up live calculation
+['state','system_size','system_age','monthly_bill'].forEach(id =>
+  document.getElementById(id).addEventListener('input', calculate)
+);
+document.querySelectorAll('input[name="ownership"]').forEach(el =>
+  el.addEventListener('change', calculate)
+);
+</script>
+</body>
+</html>
