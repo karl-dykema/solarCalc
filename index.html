@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Solar Value Calculator</title>
+  <title>Michigan Solar Value Calculator</title>
   <style>
     :root {
       --primary: #1a73e8;
@@ -246,8 +246,8 @@
 
 <header>
   <span class="logo">☀️</span>
-  <h1>Solar Value Calculator</h1>
-  <p>Estimate the market value a solar installation adds to a home — for real estate professionals</p>
+  <h1>Michigan Solar Value Calculator</h1>
+  <p>Estimate the market value a solar installation adds to a home — for Michigan real estate professionals</p>
 </header>
 
 <div class="container">
@@ -258,11 +258,32 @@
       <div class="card-title">⚙️ System Details</div>
 
       <div class="form-group">
-        <label for="state">State</label>
-        <select id="state">
-          <option value="">Select a state…</option>
+        <label for="utility">Electric Utility</label>
+        <select id="utility">
+          <option value="">Select your utility…</option>
+          <optgroup label="Investor-Owned Utilities">
+            <option value="consumers">Consumers Energy</option>
+            <option value="dte">DTE Energy (Detroit Edison)</option>
+            <option value="indiana_michigan">Indiana Michigan Power (AEP)</option>
+            <option value="uppco">Upper Peninsula Power Co. (UPPCO)</option>
+            <option value="we_energies">WE Energies (Upper Peninsula)</option>
+          </optgroup>
+          <optgroup label="Electric Cooperatives">
+            <option value="great_lakes">Great Lakes Energy Cooperative</option>
+            <option value="cherryland">Cherryland Electric Cooperative</option>
+            <option value="thumb">Thumb Electric Cooperative</option>
+            <option value="homeworks">HomeWorks Tri-County Electric Coop</option>
+            <option value="midwest">Midwest Energy Cooperative</option>
+            <option value="presque_isle">Presque Isle Electric &amp; Gas (PIEG)</option>
+            <option value="fruit_belt">Fruit Belt Electric Cooperative</option>
+            <option value="cloverland">Cloverland Electric Cooperative</option>
+            <option value="alger_delta">Alger Delta Cooperative Electric</option>
+            <option value="ontonagon">Ontonagon County REA</option>
+            <option value="baraga">Baraga County Electric Cooperative</option>
+          </optgroup>
         </select>
       </div>
+      <div id="utility-region" style="font-size:12px;color:#64748b;margin-top:-10px;margin-bottom:14px;display:none"></div>
 
       <div class="form-group">
         <label for="system_size">System Size <span class="hint">(kilowatts, kW)</span></label>
@@ -307,7 +328,7 @@
         • $11.50/kW/yr O&amp;M costs deducted (NREL 2018/2020 benchmark)<br>
         • 80% performance ratio (inverter/wiring losses)<br>
         • Low/High range = ±10% electricity rate scenario<br>
-        • State avg. sun hours &amp; electricity rates from EIA/NREL data (2024)<br>
+        • Utility-specific rates from EIA-861 data (2024); sun hours from NREL by service region<br>
         • $4/watt benchmark from Lawrence Berkeley National Laboratory (2015)<br>
         • Payback uses ~$3.00/W installed cost; 30% ITC applied for systems &lt; 1 yr old
       </div>
@@ -319,7 +340,7 @@
 
       <div id="results-empty" class="empty-state">
         <span class="icon">🏡</span>
-        Enter state &amp; system size<br>to see estimated value
+        Select your utility &amp; system size<br>to see estimated value
       </div>
 
       <div id="results-content" style="display:none">
@@ -374,7 +395,7 @@
     <div class="card-title">🏛️ Available Incentives</div>
     <div id="incentives-empty" class="empty-state" style="padding:20px 0 10px">
       <span class="icon" style="font-size:28px">📋</span>
-      Select a state to see federal &amp; state incentives
+      Select a utility to see Michigan &amp; federal incentives
     </div>
     <div id="incentives-list" style="display:none"></div>
   </div>
@@ -388,71 +409,57 @@
 
 <script>
 // ─────────────────────────────────────────────
-// STATE DATA  (EIA 2024 avg rates, NREL sun hrs)
+// MICHIGAN UTILITY DATA
+// Rates: EIA-861 2024 residential averages per utility
+// Sun hours: NREL PVWatts by service territory region
 // ─────────────────────────────────────────────
-const STATE_DATA = {
-  AL:{name:"Alabama",          rate:0.129, sun:4.7},
-  AK:{name:"Alaska",           rate:0.224, sun:3.0},
-  AZ:{name:"Arizona",          rate:0.128, sun:6.5},
-  AR:{name:"Arkansas",         rate:0.107, sun:4.7},
-  CA:{name:"California",       rate:0.263, sun:5.5},
-  CO:{name:"Colorado",         rate:0.133, sun:5.5},
-  CT:{name:"Connecticut",      rate:0.255, sun:4.2},
-  DE:{name:"Delaware",         rate:0.133, sun:4.3},
-  FL:{name:"Florida",          rate:0.129, sun:5.3},
-  GA:{name:"Georgia",          rate:0.125, sun:4.9},
-  HI:{name:"Hawaii",           rate:0.387, sun:5.7},
-  ID:{name:"Idaho",            rate:0.103, sun:4.9},
-  IL:{name:"Illinois",         rate:0.131, sun:4.0},
-  IN:{name:"Indiana",          rate:0.135, sun:4.2},
-  IA:{name:"Iowa",             rate:0.108, sun:4.4},
-  KS:{name:"Kansas",           rate:0.118, sun:5.0},
-  KY:{name:"Kentucky",         rate:0.111, sun:4.3},
-  LA:{name:"Louisiana",        rate:0.108, sun:5.0},
-  ME:{name:"Maine",            rate:0.211, sun:4.2},
-  MD:{name:"Maryland",         rate:0.147, sun:4.5},
-  MA:{name:"Massachusetts",    rate:0.255, sun:4.3},
-  MI:{name:"Michigan",         rate:0.179, sun:4.0},
-  MN:{name:"Minnesota",        rate:0.138, sun:4.5},
-  MS:{name:"Mississippi",      rate:0.115, sun:5.0},
-  MO:{name:"Missouri",         rate:0.116, sun:4.7},
-  MT:{name:"Montana",          rate:0.118, sun:4.5},
-  NE:{name:"Nebraska",         rate:0.107, sun:4.8},
-  NV:{name:"Nevada",           rate:0.115, sun:6.4},
-  NH:{name:"New Hampshire",    rate:0.231, sun:4.2},
-  NJ:{name:"New Jersey",       rate:0.179, sun:4.4},
-  NM:{name:"New Mexico",       rate:0.137, sun:6.8},
-  NY:{name:"New York",         rate:0.212, sun:4.0},
-  NC:{name:"North Carolina",   rate:0.119, sun:4.8},
-  ND:{name:"North Dakota",     rate:0.097, sun:4.8},
-  OH:{name:"Ohio",             rate:0.138, sun:4.0},
-  OK:{name:"Oklahoma",         rate:0.105, sun:5.4},
-  OR:{name:"Oregon",           rate:0.118, sun:4.2},
-  PA:{name:"Pennsylvania",     rate:0.154, sun:4.2},
-  RI:{name:"Rhode Island",     rate:0.266, sun:4.3},
-  SC:{name:"South Carolina",   rate:0.135, sun:5.0},
-  SD:{name:"South Dakota",     rate:0.112, sun:4.9},
-  TN:{name:"Tennessee",        rate:0.118, sun:4.7},
-  TX:{name:"Texas",            rate:0.128, sun:5.3},
-  UT:{name:"Utah",             rate:0.104, sun:5.9},
-  VT:{name:"Vermont",          rate:0.198, sun:4.1},
-  VA:{name:"Virginia",         rate:0.127, sun:4.5},
-  WA:{name:"Washington",       rate:0.106, sun:3.8},
-  WV:{name:"West Virginia",    rate:0.116, sun:4.1},
-  WI:{name:"Wisconsin",        rate:0.155, sun:4.2},
-  WY:{name:"Wyoming",          rate:0.109, sun:5.3},
-  DC:{name:"Washington D.C.",  rate:0.162, sun:4.3},
+const MI_UTILITIES = {
+  consumers:       { name:"Consumers Energy",                     rate:0.1882, sun:4.0, region:"Central & West Lower Peninsula" },
+  dte:             { name:"DTE Energy (Detroit Edison)",           rate:0.1750, sun:3.9, region:"Southeast Michigan / Metro Detroit" },
+  indiana_michigan:{ name:"Indiana Michigan Power (AEP)",          rate:0.1480, sun:4.1, region:"SW corner — Berrien, Cass, Van Buren" },
+  uppco:           { name:"Upper Peninsula Power Co. (UPPCO)",     rate:0.1580, sun:3.7, region:"Central & Eastern Upper Peninsula" },
+  we_energies:     { name:"WE Energies (Upper Peninsula)",         rate:0.1630, sun:3.8, region:"Western Upper Peninsula" },
+  great_lakes:     { name:"Great Lakes Energy Cooperative",        rate:0.1480, sun:4.2, region:"NW Lower Peninsula (20-county area)" },
+  cherryland:      { name:"Cherryland Electric Cooperative",       rate:0.1430, sun:4.3, region:"Grand Traverse & Leelanau area" },
+  thumb:           { name:"Thumb Electric Cooperative",            rate:0.1350, sun:3.9, region:"Thumb Region — Sanilac, Huron, Tuscola" },
+  homeworks:       { name:"HomeWorks Tri-County Electric Coop",    rate:0.1380, sun:4.0, region:"Clinton, Eaton, Montcalm, Ionia" },
+  midwest:         { name:"Midwest Energy Cooperative",            rate:0.1320, sun:4.1, region:"Southwest Michigan" },
+  presque_isle:    { name:"Presque Isle Electric & Gas (PIEG)",    rate:0.1520, sun:4.0, region:"Northeast Lower Peninsula" },
+  fruit_belt:      { name:"Fruit Belt Electric Cooperative",       rate:0.1330, sun:4.1, region:"Van Buren County" },
+  cloverland:      { name:"Cloverland Electric Cooperative",       rate:0.1380, sun:3.7, region:"Eastern Upper Peninsula" },
+  alger_delta:     { name:"Alger Delta Cooperative Electric",      rate:0.1420, sun:3.8, region:"Alger & Delta counties (UP)" },
+  ontonagon:       { name:"Ontonagon County REA",                  rate:0.1450, sun:3.7, region:"Ontonagon County (UP)" },
+  baraga:          { name:"Baraga County Electric Cooperative",    rate:0.1450, sun:3.7, region:"Baraga County (UP)" },
 };
 
 // ─────────────────────────────────────────────
-// INCENTIVES
+// MICHIGAN INCENTIVES
 // ─────────────────────────────────────────────
-const FEDERAL = [
+const MI_INCENTIVES = [
   {type:"federal", icon:"🇺🇸",
    title:"Federal Residential Clean Energy Credit (ITC) — 30%",
-   desc:"Homeowners who install a new solar system can claim 30% of total installed cost as a federal income tax credit. Applies through 2032, then steps down to 26% (2033) and 22% (2034). Only claimable by the original purchaser in the tax year of installation — credit does not transfer with the home."}
+   desc:"Homeowners who install a new solar system can claim 30% of total installed cost as a federal income tax credit. Applies through 2032, steps down to 26% in 2033 and 22% in 2034. Only claimable by the original purchaser in the tax year of installation — does not transfer with the home."},
+  {type:"state", icon:"🏠",
+   title:"Michigan Property Tax Exemption (PA 409 of 2012)",
+   desc:"Solar energy systems on Michigan homes are exempt from personal property taxation under MCL 211.9i. The added value a solar system contributes is not included in the property's taxable value assessment — a meaningful benefit for buyers."},
+  {type:"state", icon:"🔁",
+   title:"Net Metering (Consumers Energy & DTE)",
+   desc:"Michigan's two largest IOUs offer net metering under PA 295. Excess solar energy is credited at the retail rate against future bills. Co-op net metering policies vary — confirm terms with your specific utility before advising clients."},
+  {type:"state", icon:"💸",
+   title:"Michigan Saves Green Bank — Solar Financing",
+   desc:"Michigan Saves offers low-interest financing for residential solar installations through its network of approved lenders. This can improve project economics for buyers inheriting a system with a loan or considering new installation."},
+  {type:"state", icon:"🏙️",
+   title:"PACE Financing (select municipalities)",
+   desc:"Property Assessed Clean Energy financing is available in select Michigan municipalities, allowing solar costs to be repaid through property tax assessments. Availability varies by location — check with the local municipality."},
+  {type:"local", icon:"⚡",
+   title:"Consumers Energy Solar Credits Program",
+   desc:"Consumers Energy offers a Solar Credits program in addition to net metering for eligible customers. Check the current program terms at consumersenergy.com."},
+  {type:"local", icon:"⚡",
+   title:"DTE Energy Solar Currents Program",
+   desc:"DTE Energy's Solar Currents program provides production incentives for qualifying solar installations in its service territory. Check current program availability and rates at dteenergy.com."},
 ];
 
+// Legacy — keep for structure compatibility
 const STATE_INC = {
   AL:[],
   AK:[],
@@ -676,22 +683,10 @@ function fmt(v) {
 }
 
 // ─────────────────────────────────────────────
-// BUILD STATE DROPDOWN
-// ─────────────────────────────────────────────
-const sel = document.getElementById('state');
-Object.entries(STATE_DATA)
-  .sort(([,a],[,b]) => a.name.localeCompare(b.name))
-  .forEach(([code, d]) => {
-    const o = document.createElement('option');
-    o.value = code; o.textContent = d.name;
-    sel.appendChild(o);
-  });
-
-// ─────────────────────────────────────────────
 // MAIN CALCULATE
 // ─────────────────────────────────────────────
 function calculate() {
-  const stateCode = document.getElementById('state').value;
+  const utilKey   = document.getElementById('utility').value;
   const kw        = parseFloat(document.getElementById('system_size').value);
   const age       = parseFloat(document.getElementById('system_age').value) || 0;
   const ownership = document.querySelector('input[name="ownership"]:checked').value;
@@ -699,14 +694,23 @@ function calculate() {
   const resEmpty   = document.getElementById('results-empty');
   const resContent = document.getElementById('results-content');
 
-  if (!stateCode || !kw || kw <= 0) {
+  // Show region tag under utility dropdown
+  const regionEl = document.getElementById('utility-region');
+  if (utilKey && MI_UTILITIES[utilKey]) {
+    regionEl.textContent = '📍 ' + MI_UTILITIES[utilKey].region;
+    regionEl.style.display = 'block';
+  } else {
+    regionEl.style.display = 'none';
+  }
+
+  if (!utilKey || !kw || kw <= 0) {
     resEmpty.style.display = '';
     resContent.style.display = 'none';
-    updateIncentives(stateCode);
+    updateIncentives(utilKey);
     return;
   }
 
-  const d = STATE_DATA[stateCode];
+  const d    = MI_UTILITIES[utilKey];
   const rate = d.rate;
 
   const prod      = annualProduction(kw, d.sun, age);
@@ -752,27 +756,29 @@ function calculate() {
   document.getElementById('ucc-warning').style.display =
     ownership === 'owned' ? 'block' : 'none';
 
-  updateIncentives(stateCode);
+  updateIncentives(utilKey);
 }
 
-function updateIncentives(stateCode) {
+function updateIncentives(utilKey) {
   const empty = document.getElementById('incentives-empty');
   const list  = document.getElementById('incentives-list');
 
-  if (!stateCode) {
+  if (!utilKey) {
     empty.style.display = '';
     list.style.display = 'none';
     return;
   }
 
-  const items = [...FEDERAL, ...(STATE_INC[stateCode] || [])];
+  // Filter out utility-specific items for non-relevant utilities
+  const util = MI_UTILITIES[utilKey];
+  const items = MI_INCENTIVES.filter(i => {
+    if (i.title.includes('Consumers Energy') && !utilKey.startsWith('consumers')) return false;
+    if (i.title.includes('DTE Energy') && utilKey !== 'dte') return false;
+    return true;
+  });
+
   empty.style.display = 'none';
   list.style.display = '';
-
-  if (items.length === 0) {
-    list.innerHTML = '<p style="font-size:13px;color:#64748b;padding:12px 0">No major state incentive programs identified beyond the federal ITC. Check with local utilities for any available rebates.</p>';
-    return;
-  }
 
   list.innerHTML = items.map(i => `
     <div class="incentive-item">
@@ -793,7 +799,7 @@ function toggleAssumptions() {
 }
 
 // Wire up live calculation
-['state','system_size','system_age','monthly_bill'].forEach(id =>
+['utility','system_size','system_age','monthly_bill'].forEach(id =>
   document.getElementById(id).addEventListener('input', calculate)
 );
 document.querySelectorAll('input[name="ownership"]').forEach(el =>
