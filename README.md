@@ -2,7 +2,7 @@
 
 A single-page web tool for real estate professionals to quickly estimate the market value a residential solar installation adds to a home.
 
-**Live tool:** https://karldykema.github.io/solarCalc
+**Live tool:** https://karl-dykema.github.io/solarCalc
 
 ---
 
