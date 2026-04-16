@@ -299,14 +299,17 @@
 
       <span class="assumptions-toggle" onclick="toggleAssumptions()">View calculation assumptions ▾</span>
       <div class="assumptions-box" id="assumptions-box">
-        <strong>Model assumptions:</strong><br>
-        • 25-year system lifespan &nbsp;|&nbsp; 0.5% annual panel degradation<br>
-        • 3% annual electricity rate escalation<br>
-        • 7% discount rate (NPV)<br>
+        <strong>Model methodology (mirrors Pearl Certification's income-based DCF approach):</strong><br>
+        • 25-year system lifespan (panel power production warranty period)<br>
+        • 0.5% annual panel degradation (NREL)<br>
+        • 3% annual electricity rate escalation (US 10-yr avg)<br>
+        • 6.83% discount rate — current 30-yr Freddie Mac mortgage rate (Pearl methodology)<br>
+        • $11.50/kW/yr O&amp;M costs deducted (NREL 2018/2020 benchmark)<br>
         • 80% performance ratio (inverter/wiring losses)<br>
+        • Low/High range = ±10% electricity rate scenario<br>
         • State avg. sun hours &amp; electricity rates from EIA/NREL data (2024)<br>
-        • Home value add = NPV of remaining projected savings<br>
-        • Payback uses ~$3.00/W installed cost; ITC applied for systems &lt; 1 yr old
+        • $4/watt benchmark from Lawrence Berkeley National Laboratory (2015)<br>
+        • Payback uses ~$3.00/W installed cost; 30% ITC applied for systems &lt; 1 yr old
       </div>
     </div>
 
@@ -321,14 +324,19 @@
 
       <div id="results-content" style="display:none">
         <div class="highlight-box">
-          <div class="hl-label">Estimated Home Value Added</div>
+          <div class="hl-label">Estimated Home Value Added (DCF)</div>
           <div class="hl-value" id="res-home-value">—</div>
-          <div class="hl-sub">NPV of projected electricity savings over remaining system life</div>
+          <div class="hl-sub">Range: <span id="res-home-value-range">—</span></div>
+          <div class="hl-sub" style="margin-top:4px">LBNL $4/watt benchmark: <span id="res-4watt">—</span></div>
         </div>
 
         <div class="metric">
-          <span class="metric-label">Annual Electricity Savings</span>
+          <span class="metric-label">Annual Electricity Savings (gross)</span>
           <span class="metric-value green" id="res-annual-savings">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">O&amp;M Costs (deducted, $11.50/kW/yr)</span>
+          <span class="metric-value" style="color:#ef4444" id="res-om-cost">—</span>
         </div>
         <div class="metric">
           <span class="metric-label">25-Year Gross Savings (undiscounted)</span>
@@ -352,7 +360,10 @@
         </div>
 
         <div class="lease-warn" id="lease-warning">
-          ⚠️ <strong>Leased &amp; PPA systems</strong> typically do not add comparable market value — the buyer must qualify to assume the contract. Depending on terms, remaining payment obligations can be a liability. Consult a solar-experienced appraiser and review the contract's transfer clause before pricing.
+          ⚠️ <strong>Leased &amp; PPA systems:</strong> Fannie Mae and FHA do not recognize leased solar as adding value to a home. The buyer must qualify to assume the contract — remaining obligations may be viewed as a liability. Review the transfer clause and consult a solar-experienced appraiser.
+        </div>
+        <div class="lease-warn" id="ucc-warning" style="display:none">
+          ℹ️ <strong>If the system carries a solar loan secured by a UCC-1 filing,</strong> the lender may treat it as personal property and assign no value in the appraisal. Tell the lender to instruct the appraiser to perform a "subject to" appraisal assuming the UCC-1 is removed at closing — or pay off the loan before appraisal.
         </div>
       </div>
     </div>
@@ -619,28 +630,33 @@ const STATE_INC = {
 
 // ─────────────────────────────────────────────
 // CALCULATION CONSTANTS
+// Methodology mirrors Pearl Certification's income-based approach
 // ─────────────────────────────────────────────
-const SYSTEM_LIFE    = 25;
-const DEGRADATION    = 0.005;
-const RATE_ESC       = 0.03;
-const DISCOUNT_RATE  = 0.07;
-const COST_PER_WATT  = 3.00;
-const PERF_RATIO     = 0.80;
+const SYSTEM_LIFE    = 25;      // years (panel power production warranty period)
+const DEGRADATION    = 0.005;   // 0.5%/yr panel output degradation (NREL)
+const RATE_ESC       = 0.03;    // 3%/yr electricity rate escalation (US 10-yr avg)
+const DISCOUNT_RATE  = 0.0683;  // ~current 30-yr mortgage rate (Freddie Mac, Pearl methodology)
+const COST_PER_WATT  = 3.00;    // $3/W installed (national avg new system)
+const PERF_RATIO     = 0.80;    // inverter + wiring losses
+const OM_PER_KW      = 11.50;   // $11.50/kW/yr O&M (NREL 2018/2020 benchmark)
 
 function annualProduction(kw, sun, age) {
   return kw * sun * 365 * PERF_RATIO * Math.pow(1 - DEGRADATION, age);
 }
 
-function calcNPV(kw, sun, rate, age) {
+// rateAdj: multiplier on electricity rate — used to produce Low (0.9) / High (1.1) range
+function calcNPV(kw, sun, rate, age, rateAdj = 1.0) {
   const remaining = Math.max(0, SYSTEM_LIFE - age);
+  const omAnnual  = OM_PER_KW * kw;
   let npv = 0;
   const baseProd = annualProduction(kw, sun, age);
   for (let yr = 1; yr <= remaining; yr++) {
-    const prod  = baseProd * Math.pow(1 - DEGRADATION, yr - 1);
-    const r     = rate * Math.pow(1 + RATE_ESC, age + yr - 1);
-    npv += (prod * r) / Math.pow(1 + DISCOUNT_RATE, yr);
+    const prod    = baseProd * Math.pow(1 - DEGRADATION, yr - 1);
+    const r       = rate * rateAdj * Math.pow(1 + RATE_ESC, age + yr - 1);
+    const netSav  = (prod * r) - omAnnual;
+    npv += netSav / Math.pow(1 + DISCOUNT_RATE, yr);
   }
-  return npv;
+  return Math.max(0, npv);
 }
 
 function calc25yrGross(kw, sun, rate) {
@@ -695,22 +711,29 @@ function calculate() {
 
   const prod      = annualProduction(kw, d.sun, age);
   const annSav    = prod * rate;
+  const omAnnual  = OM_PER_KW * kw;
   const remaining = Math.max(0, SYSTEM_LIFE - age);
-  const npv       = calcNPV(kw, d.sun, rate, age);
+  const npvExp    = calcNPV(kw, d.sun, rate, age, 1.0);
+  const npvLow    = calcNPV(kw, d.sun, rate, age, 0.9);
+  const npvHigh   = calcNPV(kw, d.sun, rate, age, 1.1);
   const gross25   = calc25yrGross(kw, d.sun, rate);
+  const wattValue = kw * 1000 * 4; // LBNL $4/watt benchmark (new system)
   const sysCost   = kw * 1000 * COST_PER_WATT;
   const effCost   = age < 1 ? sysCost * 0.70 : sysCost;
-  const payback   = annSav > 0 ? effCost / annSav : null;
+  const payback   = (annSav - omAnnual) > 0 ? effCost / (annSav - omAnnual) : null;
 
   resEmpty.style.display = 'none';
   resContent.style.display = '';
 
-  document.getElementById('res-home-value').textContent   = fmt(npv);
-  document.getElementById('res-annual-savings').textContent = fmt(annSav) + '/yr';
-  document.getElementById('res-25yr').textContent          = fmt(gross25);
-  document.getElementById('res-remaining-life').textContent = remaining + ' years';
-  document.getElementById('res-production').textContent    = Math.round(prod).toLocaleString() + ' kWh/yr';
-  document.getElementById('res-rate').textContent          = (rate * 100).toFixed(1) + '¢/kWh';
+  document.getElementById('res-home-value').textContent      = fmt(npvExp);
+  document.getElementById('res-home-value-range').textContent = fmt(npvLow) + ' – ' + fmt(npvHigh);
+  document.getElementById('res-4watt').textContent            = fmt(wattValue) + ' (new system ref)';
+  document.getElementById('res-annual-savings').textContent   = fmt(annSav) + '/yr';
+  document.getElementById('res-om-cost').textContent          = fmt(omAnnual) + '/yr';
+  document.getElementById('res-25yr').textContent             = fmt(gross25);
+  document.getElementById('res-remaining-life').textContent   = remaining + ' years';
+  document.getElementById('res-production').textContent       = Math.round(prod).toLocaleString() + ' kWh/yr';
+  document.getElementById('res-rate').textContent             = (rate * 100).toFixed(1) + '¢/kWh';
 
   if (payback && payback > 0) {
     const remaining_pb = Math.max(0, payback - age);
@@ -726,6 +749,8 @@ function calculate() {
 
   document.getElementById('lease-warning').style.display =
     (ownership === 'leased' || ownership === 'ppa') ? 'block' : 'none';
+  document.getElementById('ucc-warning').style.display =
+    ownership === 'owned' ? 'block' : 'none';
 
   updateIncentives(stateCode);
 }
