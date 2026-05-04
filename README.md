@@ -8,14 +8,15 @@ A single-page web tool for real estate professionals to quickly estimate the mar
 
 ## What It Does
 
-Given a few simple inputs — state, system size, age, and ownership type — the calculator produces:
+Given a few simple inputs — utility, system size, age, and ownership type — the calculator produces:
 
 - **Estimated home value added** (NPV of remaining projected electricity savings)
 - Annual electricity savings
 - 25-year gross savings projection
 - Estimated payback period (with federal ITC applied for new systems)
 - Remaining useful system life
-- All available federal and state incentives for the selected state
+- All available Michigan & federal incentives for the selected utility
+- **25-year value chart** (low / expected / high scenarios) — unlocked via a lead capture form
 
 ---
 
@@ -123,4 +124,4 @@ Incentives are displayed from a curated static dataset covering:
 
 ## Tech Stack
 
-Plain HTML, CSS, and vanilla JavaScript. No dependencies, no build step. Designed to be hosted as a single file on GitHub Pages.
+Plain HTML, CSS, and vanilla JavaScript. Chart.js (CDN) for the 25-year projection chart. Form submissions handled by Formspree. No build step — hosted as a single file on GitHub Pages.
