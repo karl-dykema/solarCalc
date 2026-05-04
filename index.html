@@ -240,7 +240,63 @@
     }
 
     footer { text-align: center; padding: 20px; font-size: 12px; color: var(--muted); }
+
+    /* ── Chart CTA ── */
+    .chart-cta-wrap { margin-top: 22px; text-align: center; }
+    .chart-cta-btn {
+      background: linear-gradient(135deg, #059669, #34a853);
+      color: white; border: none; border-radius: 12px;
+      padding: 14px 24px; font-size: 15px; font-weight: 700;
+      cursor: pointer; width: 100%; transition: opacity 0.15s;
+      letter-spacing: -0.2px;
+    }
+    .chart-cta-btn:hover { opacity: 0.88; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55); z-index: 1000;
+      align-items: center; justify-content: center; padding: 16px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: white; border-radius: 16px; padding: 32px 28px;
+      max-width: 440px; width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    }
+    .modal-title { font-size: 20px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+    .modal-sub { font-size: 13px; color: var(--muted); margin-bottom: 22px; line-height: 1.5; }
+    .modal-field { margin-bottom: 14px; }
+    .modal-field input {
+      width: 100%; padding: 11px 13px;
+      border: 1.5px solid var(--border); border-radius: 9px;
+      font-size: 15px; color: var(--text); background: white;
+      transition: border-color 0.15s;
+    }
+    .modal-field input:focus {
+      outline: none; border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(26,115,232,0.14);
+    }
+    .modal-submit {
+      background: linear-gradient(135deg, #059669, #34a853);
+      color: white; border: none; border-radius: 10px;
+      padding: 13px; font-size: 15px; font-weight: 700;
+      cursor: pointer; width: 100%; margin-top: 6px; transition: opacity 0.15s;
+    }
+    .modal-submit:hover { opacity: 0.88; }
+    .modal-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+    .modal-cancel {
+      text-align: center; margin-top: 12px; font-size: 13px;
+      color: var(--muted); cursor: pointer;
+      text-decoration: underline; text-underline-offset: 2px;
+    }
+    .modal-error {
+      background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px;
+      padding: 10px 12px; font-size: 13px; color: #b91c1c;
+      margin-bottom: 12px; display: none;
+    }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -386,8 +442,21 @@
         <div class="lease-warn" id="ucc-warning" style="display:none">
           ℹ️ <strong>If the system carries a solar loan secured by a UCC-1 filing,</strong> the lender may treat it as personal property and assign no value in the appraisal. Tell the lender to instruct the appraiser to perform a "subject to" appraisal assuming the UCC-1 is removed at closing — or pay off the loan before appraisal.
         </div>
+
+        <div class="chart-cta-wrap" id="chart-btn-wrap" style="display:none">
+          <button class="chart-cta-btn" onclick="showChartModal()">📈 Get My 25-Year Value Chart</button>
+        </div>
       </div>
     </div>
+  </div>
+
+  <!-- ── 25-YEAR VALUE CHART ── -->
+  <div id="chart-section" class="card full-width" style="display:none">
+    <div class="card-title">📈 25-Year System Value Projection</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.55">
+      Estimated DCF value remaining in your solar system each year — how much a buyer today would rationally pay for the remaining energy savings, discounted to present value.
+    </div>
+    <canvas id="valueChart"></canvas>
   </div>
 
   <!-- ── INCENTIVES ── -->
@@ -402,6 +471,34 @@
 
   <div class="disclaimer">
     <strong>Disclaimer:</strong> This tool provides estimates for informational purposes only. Actual savings and home value impact depend on local rates, net metering policy, system condition, buyer financing, and market conditions. For formal appraisals, seek a USPAP-trained appraiser with PV Value® certification. Incentive programs change frequently — always verify current availability with the relevant agency or utility.
+  </div>
+</div>
+
+<!-- ── LEAD CAPTURE MODAL ── -->
+<div id="chart-modal" class="modal-overlay" onclick="handleModalClick(event)">
+  <div class="modal-box">
+    <div class="modal-title">Get Your 25-Year Value Chart</div>
+    <div class="modal-sub">Enter your details to unlock the full 25-year projection for your system.</div>
+    <div class="modal-error" id="modal-error">Something went wrong. Please try again.</div>
+    <form id="lead-form" onsubmit="submitLeadForm(event)">
+      <div class="modal-field">
+        <input type="text" name="name" placeholder="Full Name" required>
+      </div>
+      <div class="modal-field">
+        <input type="text" name="address" placeholder="Property Address" required>
+      </div>
+      <div class="modal-field">
+        <input type="email" name="email" placeholder="Email Address" required>
+      </div>
+      <input type="hidden" name="_subject" value="New Solar Chart Request">
+      <input type="hidden" name="_replyto" id="form-replyto">
+      <input type="hidden" name="utility_name" id="form-utility">
+      <input type="hidden" name="system_size_kw" id="form-size">
+      <input type="hidden" name="system_age_yrs" id="form-age">
+      <input type="hidden" name="estimated_value" id="form-value">
+      <button type="submit" class="modal-submit" id="modal-submit-btn">Show My 25-Year Chart →</button>
+    </form>
+    <div class="modal-cancel" onclick="closeChartModal()">Cancel</div>
   </div>
 </div>
 
@@ -647,6 +744,9 @@ const COST_PER_WATT  = 3.00;    // $3/W installed (national avg new system)
 const PERF_RATIO     = 0.80;    // inverter + wiring losses
 const OM_PER_KW      = 11.50;   // $11.50/kW/yr O&M (NREL 2018/2020 benchmark)
 
+let currentCalcState = null;
+let chartInstance = null;
+
 function annualProduction(kw, sun, age) {
   return kw * sun * 365 * PERF_RATIO * Math.pow(1 - DEGRADATION, age);
 }
@@ -706,6 +806,8 @@ function calculate() {
   if (!utilKey || !kw || kw <= 0) {
     resEmpty.style.display = '';
     resContent.style.display = 'none';
+    document.getElementById('chart-btn-wrap').style.display = 'none';
+    document.getElementById('chart-section').style.display = 'none';
     updateIncentives(utilKey);
     return;
   }
@@ -756,7 +858,109 @@ function calculate() {
   document.getElementById('ucc-warning').style.display =
     ownership === 'owned' ? 'block' : 'none';
 
+  currentCalcState = { kw, sun: d.sun, rate, age, npvExp };
+  document.getElementById('chart-btn-wrap').style.display = '';
+  document.getElementById('chart-section').style.display = 'none';
+
   updateIncentives(utilKey);
+}
+
+function showChartModal() {
+  document.getElementById('chart-modal').classList.add('open');
+}
+
+function closeChartModal() {
+  document.getElementById('chart-modal').classList.remove('open');
+  const btn = document.getElementById('modal-submit-btn');
+  btn.textContent = 'Show My 25-Year Chart →';
+  btn.disabled = false;
+  document.getElementById('modal-error').style.display = 'none';
+}
+
+function handleModalClick(e) {
+  if (e.target === document.getElementById('chart-modal')) closeChartModal();
+}
+
+async function submitLeadForm(e) {
+  e.preventDefault();
+  const btn = document.getElementById('modal-submit-btn');
+  const errEl = document.getElementById('modal-error');
+  errEl.style.display = 'none';
+
+  const emailInput = e.target.querySelector('input[type="email"]');
+  document.getElementById('form-replyto').value = emailInput.value;
+  document.getElementById('form-utility').value = MI_UTILITIES[document.getElementById('utility').value]?.name || '';
+  document.getElementById('form-size').value = currentCalcState.kw + ' kW';
+  document.getElementById('form-age').value = currentCalcState.age + ' years';
+  document.getElementById('form-value').value = fmt(currentCalcState.npvExp);
+
+  btn.textContent = 'Sending…';
+  btn.disabled = true;
+
+  try {
+    const resp = await fetch('https://formspree.io/f/xeenabbb', {
+      method: 'POST',
+      body: new FormData(e.target),
+      headers: { Accept: 'application/json' }
+    });
+    if (resp.ok) {
+      closeChartModal();
+      renderChart();
+    } else {
+      errEl.style.display = 'block';
+      btn.textContent = 'Show My 25-Year Chart →';
+      btn.disabled = false;
+    }
+  } catch {
+    errEl.style.display = 'block';
+    btn.textContent = 'Show My 25-Year Chart →';
+    btn.disabled = false;
+  }
+}
+
+function renderChart() {
+  const { kw, sun, rate, age } = currentCalcState;
+  const section = document.getElementById('chart-section');
+  section.style.display = '';
+  setTimeout(() => section.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+
+  const currentYear = new Date().getFullYear();
+  const labels = [], lowData = [], expData = [], highData = [];
+
+  for (let a = age; a <= SYSTEM_LIFE; a++) {
+    labels.push(String(currentYear + (a - age)));
+    lowData.push(Math.round(calcNPV(kw, sun, rate, a, 0.9)));
+    expData.push(Math.round(calcNPV(kw, sun, rate, a, 1.0)));
+    highData.push(Math.round(calcNPV(kw, sun, rate, a, 1.1)));
+  }
+
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(document.getElementById('valueChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'High Scenario', data: highData, borderColor: '#34a853', borderWidth: 2, pointRadius: 3, tension: 0.3, fill: false },
+        { label: 'Expected',      data: expData,  borderColor: '#1a73e8', borderWidth: 3, pointRadius: 3, tension: 0.3, fill: false },
+        { label: 'Low Scenario',  data: lowData,  borderColor: '#f59e0b', borderWidth: 2, pointRadius: 3, tension: 0.3, fill: false },
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: { callbacks: { label: ctx => ' ' + ctx.dataset.label + ': $' + ctx.raw.toLocaleString() } }
+      },
+      scales: {
+        y: {
+          ticks: { callback: v => '$' + v.toLocaleString() },
+          title: { display: true, text: 'Remaining System Value (DCF)' }
+        },
+        x: { title: { display: true, text: 'Year' } }
+      }
+    }
+  });
 }
 
 function updateIncentives(utilKey) {
